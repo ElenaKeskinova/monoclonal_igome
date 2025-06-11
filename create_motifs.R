@@ -16,7 +16,7 @@ allpepsets = list()
 plan(multisession,workers = 6)
 # 
 for(ab in abs){
-  path = paste0("D:/Elena/ban/Motifier_DataSet/mixed-7graphs/",ab,"/")
+  path = paste0("mixed-7graphs/",ab,"/")
   f = paste0(path,ab,"big7or.RData")
   load(f)
   load(paste0(path,ab,"big7-l.RData"))

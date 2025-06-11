@@ -16,12 +16,12 @@ kld = function(p,q){
 }
 abs = abs = c("Herceptin","21c","17b","b12")
 gsizes = sapply(abs,\(ab){
-  path = paste0("/home/elena/Documents/eli/Motifier_DataSet/mixed-7graphs/",ab,"/")
+  path = paste0("mixed-7graphs/",ab,"/")
   f = paste0(path,ab,"big7or.RData")
   load(f)
   vcount(G)
 })
-load(file = "/home/elena/Documents/eli/Motifier_DataSet/mixed-7graphs/lib_allpeps_7nC.RData")
+load(file = "mixed-7graphs/lib_allpeps_7nC.RData")
 
 bkg_m = create_motif(peps_7nC)    
 bgmot = freqM7

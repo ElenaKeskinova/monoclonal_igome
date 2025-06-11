@@ -1,11 +1,11 @@
 
 
-# transform data from length 8 and 10 to length 7 
+# transform data from length 8 and 10 to length 7 ----
 abs = c("Herceptin","b12","17b","21c")
 for(ab in abs[1:4]){
-  path = paste0("/Exp12.f_UNI-10/", ab,"/")
+  path = paste0("Exp12.f_UNI-10/", ab,"/")
   files <- list.files(path = path, pattern = "uniqueP_[[:upper:]]{5}.txt", full.names = TRUE)
-  path8 = paste0("/Exp12.f_UNI-8/", ab,"/")
+  path8 = paste0("Exp12.f_UNI-8/", ab,"/")
   files8 <- list.files(path = path8, pattern = "uniqueP_[[:upper:]]{5}.txt", full.names = TRUE)
   
   #get all peps together for length 10
@@ -21,7 +21,7 @@ for(ab in abs[1:4]){
   Peps_noC = AllPep_agg[Peps_noC,]
   
   
-  ## for 10 letters
+  ## for 10 letters ----
   
   Peps7 = sapply(Peps_noC$Pep, \(p){
     ps = strsplit(p,"")[[1]]
@@ -32,7 +32,7 @@ for(ab in abs[1:4]){
   
   freq10to7 = rep(Peps_noC$x,each = 2)
   
-  ## for 8 letters:
+  ## for 8 letters ----
   AllPep = data.frame()
   for (f in files8){
     Pep = read.table(file = f,
@@ -60,7 +60,7 @@ for(ab in abs[1:4]){
   
   freq8to7 = Peps_noC8$x
   
-  #merge both dataframes
+  ## merge both dataframes ----
   pep = c(Peps7,Peps87)
   freq = c(freq10to7,freq8to7)
   all8107 = aggregate(freq,by = list(Pep = pep),FUN = sum)

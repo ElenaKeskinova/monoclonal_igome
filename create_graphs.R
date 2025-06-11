@@ -14,9 +14,9 @@ tups$Tups = sapply(tups$Tups, \(t) str_remove(t,"  "))
 ncores = parallel::detectCores()
 plan(multisession(workers = ncores-2))
 
-# make graphs 
+# make graphs ----
 foreach(ab = abs) %dopar% {
-  path = paste0("/mixed-7graphs/",ab,"/")
+  path = paste0("mixed-7graphs/",ab,"/")
   f = file(paste0(path,ab,"_allp810_noC7-fr.txt"))
   Peps = read.table(file = f,colClasses = c("character","integer"),col.names = c("Pep","Freq"))
   Peps = Peps[which(Peps$Freq>1),] # only with frequency>1
@@ -34,11 +34,11 @@ foreach(ab = abs) %dopar% {
 closeAllConnections()
 
 
-# make line graphs
+# make line graphs ----
 plan(multisession(workers = ncores-2))
 foreach(ab = abs) %dopar% {
   source("compute_lcs.R")
-  path = paste0("/mixed-7graphs/",ab,"/")
+  path = paste0("mixed-7graphs/",ab,"/")
   f = paste0(path,ab,"big7or.RData")
   load(f)
   
@@ -51,7 +51,7 @@ foreach(ab = abs) %dopar% {
 
 plan(sequential)
 
-### make data frame with all lcs for every edge
+# make data frame with all lcs for every edge ----
 
 plan(multisession(workers = ncores-2))
 foreach(ab = abs) %dopar% {
@@ -67,4 +67,5 @@ foreach(ab = abs) %dopar% {
 }
 
 plan(sequential)
-#######
+
+

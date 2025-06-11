@@ -1,6 +1,14 @@
 # compare kld to kld from the random clusters, calculate z-scores, make graphics
 
-rnd_results = lapply(gsizes,\(vc) {load(paste0("D:/Elena/ban/Motifier_DataSet/mixed-7graphs/",vc, "_res_l.RData" ));res})
+
+# get random results
+gsizes = sapply(abs,\(ab){
+  path = paste0("mixed-7graphs/",ab,"/")
+  f = paste0(path,ab,"big7or.RData")
+  load(f)
+  vcount(G)
+})
+rnd_results = lapply(gsizes,\(vc) {load(paste0("mixed-7graphs/",vc, "_res_l.RData" ));res})
 
 for(i in 1:4){ 
   data = data.frame(x=log10(rnd_results[[i]][,3]),y=log10(rnd_results[[i]][,1]))
@@ -53,7 +61,7 @@ allp = p.adjust(allp,method = "BH")
 # make graphics----
 ### mapping distances
 
-load(file = "D:/Elena/ban/Motifier_DataSet/4st_generation_library/lib_allpeps_7nC.RData")
+load(file = "4st_generation_library/lib_allpeps_7nC.RData")
 bkg_m = create_motif(peps_7nC) # motif from library
 bgmot = bkg_m@motif
 
