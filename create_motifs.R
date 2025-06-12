@@ -8,6 +8,8 @@ library(doFuture)
 library(msa)
 library(future.apply)
 
+source("freq_matrix.R")
+
 abs = c("Herceptin","21c","17b","b12")
 
 ##
