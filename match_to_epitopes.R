@@ -1,4 +1,5 @@
 library(Biostrings)
+source("paths_scores_functions.R")
 # use all_pssm_ from the script create_motifs.R
 # take files with results from Pymol for contact amino acids on antigen surfaces, obtained from structures 1yyl,3lqa,2ny7,1n8z from pdb
 # make graphs from epitope amino acids, introduce gap nodes where distance is over 6 A , take all paths and find highest overlap score to each cluster
@@ -7,7 +8,7 @@ library(Biostrings)
 AA_code = sapply(AMINO_ACID_CODE,toupper)
 AA_code = c(AA_code,"XXX")
 names(AA_code)[27] = "-"
-
+abs = c("Herceptin","21c","17b","b12")
 
 distances = lapply(abs,\(ab){ # distances between amino acids closer than 5 A to antibody, from PDB, calculated with Pymol
   read.table(paste0("mixed-7graphs/epi_",ab,".txt"),header = T)
@@ -74,7 +75,7 @@ distscan = lapply(distscan,\(df){ # between 6 and 12
 
 
 gtemp = graphs_min # graphs to add edges to
-library(foreach)
+
 
 
 # iterate through nodes over 6 A to include the necessary ones for a connected graph
@@ -110,10 +111,24 @@ for(i in 1:4){plot(gtemp[[i]],main = abs[i])}
 
 g_full = gtemp
 
+# make AA 1 letter code as attribute
+g_full = lapply(g_full,\(g){
+  aas = sapply(V(g)$name,\(nm){
+    c3 = paste0(unlist(strsplit(nm,""))[1:3],collapse = ""); 
+    names(AA_code[which(AA_code==c3)])
+    
+  } )
+  set_vertex_attr(g,name = "AA", value = aas)
+  
+})
 
 # max scores all graphs vs all clusters ----
+load(file = "mixed-7graphs/all_pssm.RData")
 
 
+
+library(future.apply)
+library(vctrs)
 max_scores_all = future_sapply(1:4,\(ab_i){
   paths = longpaths(g_full[[ab_i]])
   sapply(all_pssm_,\(mot){
@@ -155,38 +170,37 @@ for(i in 1:4){
 }
 
 
-# functions to compute paths and scores ----
+# check which parts of epitope are similar to the clusters
 
-longpaths = function(g){ # graph
-  vs = V(g)[which(degree(g)==1)]
-  peps = sapply(vs,\(v){
-    paths = all_simple_paths(g,from =v,to = vs)
-    peps = (sapply(paths,\(path){
-      p = V(g)[names(path)]$AA
-      np = length(p)
-      nx = length(which(p=="-"))
-      if(np-nx>4 & nx<np/3 ){ 
-        p
-      }
-      # returns all paths as arrays
-      
+for(i in 1:4){
+  
+  pssm = all_pssm_[which(colcodes==i)]
+  
+  sc = max_scores_all[which(colcodes==i),i]
+  control = max_scores_all[,i]
+  e = ecdf(control)
+  qt = e(sc)
+  qth = which(qt>0.8)
+  
+  paths = longpaths(g_full[[i]])
+  printpaths = unlist(sapply(paths,\(paths2) {
+    paths2 = list_drop_empty(paths2)
+    sapply(paths2,\(path){
+      paste(path,collapse = "")
+    })
+  }))
+  for(q in qth){
+    mot = pssm[[q]]
+    scores = unlist(sapply(paths,\(paths2) {
+      paths2 = list_drop_empty(paths2)
+      sapply(paths2,\(path){
+        score(mot,path)
+      })
     }))
-  })
+    jj = which.max(scores)
+    print(paste(abs[i],q,round(scores[jj],2), printpaths[[jj]]))
+  
+  }
+  
   
 }
-
-score = function(mot,epi){ # provide a pssm and an epitope as a character array
-  n = length(epi)
-  if(n<=ncol(mot)){
-    max(sapply(1:(ncol(mot)-n+1),\(i){
-      sum(diag(mot[epi,i:(i+n-1)]))
-    }))
-  } 
-  else{
-    max(sapply(1:(n - ncol(mot)+1),\(i){
-      sum(diag(mot[epi[i:(i+ncol(mot)-1)],]))
-    }))
-  }
-}
-
-

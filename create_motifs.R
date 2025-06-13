@@ -58,21 +58,21 @@ allp_m = future_lapply(allpepsets,\(set){ create_motif(set)})
 allp_mp = sapply(pepsets, \(p){create_motif(unique(p),pseudocount = 1)}) # with pseudocount
 allp_mb = append(allp_m,bkg_m) # add motif of bachground
 
-colcodes_b = c(rep(15,39),rep(16,17),rep(17,16),rep(18,15),4)
-colcodes = c(rep(15,39),rep(16,17),rep(17,16),rep(18,15))
+colcodes_b = c(rep(1,39),rep(2,17),rep(3,16),rep(4,15),5)
+colcodes = c(rep(1,39),rep(2,17),rep(3,16),rep(4,15))
 # create pssms without and with gaps
 all_pssm = lapply(allpepsets,\(pepset){
   l=msaClustalW(AAStringSet(pepset), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
   l= apply(as.matrix(l),1, paste,collapse="")
   pssm(l)
 })
-save(all_pssm,file = "mixed-7graphs/all_pssm.RData")
 
 all_pssm_ = lapply(all_pssm,\(mot){
   mot = rbind(mot,rep(0,ncol(mot)))
   rownames(mot)[nrow(mot)] = "-"
   mot
 })
+save(all_pssm,all_pssm_,file = "mixed-7graphs/all_pssm.RData")
 
 ## calculate distances between motifs and kld scores -----
 kld = function(p,q){
