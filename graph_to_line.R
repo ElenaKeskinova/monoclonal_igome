@@ -10,6 +10,6 @@ graph_to_line = function(g){
   lg = make_line_graph(g)
   lg = set_vertex_attr(lg,name = "name",value = enames)
   lg = set_graph_attr(lg,all_lcs,name = "edg_lcs")
-  lg_s = simplify(contract(lg, as.numeric(as.factor(enames)),vertex.attr.comb = list(name = "first") ),edge.attr.comb = list(name = "first"))
+  lg_s = simplify(contract(lg, as.numeric(as.factor(enames)),vertex.attr.comb = list(name = "first") ))
   return(lg_s)
 }

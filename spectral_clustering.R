@@ -14,7 +14,7 @@ require(RandPro)
 
 ab = "b12"
 
-path = paste0("/mixed-7graphs/",ab,"/")
+path = paste0("mixed-7graphs/",ab,"/")
 
 load(paste0(path,ab,"big7-l.RData"))
 
