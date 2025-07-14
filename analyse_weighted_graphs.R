@@ -18,7 +18,7 @@ source("specclust.R")
 
 for(ab in abs[4]){
   path = paste0("mixed-7graphs/",ab,"/")
-  load(paste0(path,ab,"big7-lw.RData"))
+  load(paste0(path,ab,"big7-logw.RData"))
   specclust(ab,lg,bc = "w")
 }
 
@@ -29,7 +29,7 @@ load(paste0(path,ab,"big7-lw.RData"))
 load(paste0(path,ab,"big7or.RData"))
 
 cpl=colorRampPalette(c("#000000FF","#0050AA9F","#10AA109F","#50AF3055","#FFFF009F","#FFA0009F","#B50000"), alpha=T)
-bc = "w"
+bc = "logw"
 load(file = paste0(path,ab,"_",bc,"_","dbscan.RData"))
 load(file = paste0(path,ab,"_",bc,"_","speccoord.RData"))
 cldbsc = result_db[[1]]
