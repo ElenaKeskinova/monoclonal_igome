@@ -24,10 +24,11 @@ freqM7
 kld(bgmot,freqM7)
 freql = rowSums(freqM7)/7
 rowSums(freqM)/10
+load(file = "../Motifier_DataSet/4st_generation_library/lib_allpeps_7nC.RData")
 bkg_m = create_motif(peps_7nC)
 bgmot = bkg_m@motif
 freq = rowSums(freqM)/ncol(freqM)
 
 save(freqM,freqM7,file="4st_generation_library/lib_freqs.RData")
-
+load(file = "../Motifier_DataSet/4st_generation_library/lib_freqs.RData")
 
