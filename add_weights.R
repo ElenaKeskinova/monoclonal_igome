@@ -24,3 +24,16 @@ add_weights = function(ab){
   })
   set_edge_attr(lg,name = "weight",value = weights)
 }
+
+weights = function(lg,edg_lcs,v_freqs){
+  future_sapply(E(lg),\(e){
+    ee = ends(lg,e)
+    ee1 = ee[1]
+    ee2 = ee[2]
+    
+    seqs1 = unlist(edg_lcs[which(edg_lcs[,3]==ee1),1:2])
+    seqs2 = unlist(edg_lcs[which(edg_lcs[,3]==ee2),1:2])
+    common = intersect(seqs1,seqs2)
+    sum(v_freqs[common])
+  })
+}
