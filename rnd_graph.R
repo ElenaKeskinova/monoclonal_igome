@@ -27,3 +27,22 @@ rnd_graph_w = function(N,lett = 7,freqs=freq,s){
   
   return(list(g,gl)) 
 }
+
+rnd_graph_wcopy = function(N,lett = 7,freqs=freq,pepfr,s){
+  
+  a = sapply(1:N, function(x){
+    paste(sample(sort(AA_STANDARD), lett, prob = freqs, replace = TRUE), collapse = "")
+  })
+  
+  g = newgraph(a,2)
+  g = set_vertex_attr(g,name="Freq",value =pepfr)
+  gl = graph_to_line(g)
+  
+  names(pepfr) = V(g)$name
+  pepfr = log2(pepfr)
+  weights = weights(gl,gl$edg_lcs,pepfr)
+  gl = set_edge_attr(gl,name = "weight",value = weights)
+  
+  return(list(g,gl)) 
+}
+

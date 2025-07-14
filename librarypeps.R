@@ -1,3 +1,4 @@
+
 # obtain aa freq distributions from the whole library
 
 lib4 = readLines(file("4st_generation_library/4st_generation_random_library_Filtered_AA.fs"))

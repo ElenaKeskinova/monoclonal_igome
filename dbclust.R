@@ -32,12 +32,13 @@ chooseep_db = function(coord,knnd,nn){
 dbclust_peps = function(g,lg)
 {
   require(vctrs)
+  require(dbscan)
   edg_lcs = lg$edg_lcs
   #spectral embedding
   arpopt=list(maxiter=100000, tol=1e-6)
   
-  i = which.max(components(lg)$csize)
-  lg = subgraph(lg,V(lg)[which(components(lg)$membership == i)])
+  i = which.max(igraph::components(lg)$csize)
+  lg = subgraph(lg,V(lg)[which(igraph::components(lg)$membership == i)])
   L=embed_laplacian_matrix(lg, no=35, which="sa", type="I-DAD", options=arpopt)#
   
   print(paste(i,"laplacian ready"))

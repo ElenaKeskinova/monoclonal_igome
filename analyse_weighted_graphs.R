@@ -1,6 +1,8 @@
 abs = c("Herceptin","21c","17b","b12")
 library(future.apply)
+
 library(igraph)
+
 # create weighted graphs----
 source("add_weights.R")
 
@@ -16,16 +18,21 @@ for(ab in abs){
 # spectral clustering----
 source("specclust.R")
 
-for(ab in abs[4]){
+
+for(ab in abs[1:4]){
+
   path = paste0("mixed-7graphs/",ab,"/")
   load(paste0(path,ab,"big7-logw.RData"))
-  specclust(ab,lg,bc = "w")
+  specclust(ab,lg,bc = "logw")
+
 }
 
 # plot 3d graphics of clusters ----
 ab = abs[1]
 path = paste0("mixed-7graphs/",ab,"/")
-load(paste0(path,ab,"big7-lw.RData"))
+
+load(paste0(path,ab,"big7-logw.RData"))
+
 load(paste0(path,ab,"big7or.RData"))
 
 cpl=colorRampPalette(c("#000000FF","#0050AA9F","#10AA109F","#50AF3055","#FFFF009F","#FFA0009F","#B50000"), alpha=T)
@@ -70,7 +77,6 @@ allfreqs = future_lapply(1:4,\(i){
 logfreqs = lapply(allfreqs,\(fr) sapply(fr,\(f) round(log2(f))))
 
 logpepsets = lapply(1:4,\(i){
-  
   lapply(1:length(logfreqs[[i]]),\(j){
     
     rep(allpepsets_w[[i]][[j]],logfreqs[[i]][[j]])
@@ -139,6 +145,78 @@ all_pssm_ = lapply(all_pssm,\(mots){
   
 })
 
+require(universalmotif)
+plan(multisession)
+allm_w = future_lapply(logpepsets,\(pepsets){
+  sapply(pepsets,\(set)create_motif(set))})
+allm_wp =future_lapply(logpepsets,\(pepsets){
+  sapply(pepsets,\(set)create_motif(set, pseudocount = 1))}) # with pseudocount
+
+## aligned motifs -----
+# create pssms without and with gaps
+source("freq_matrix.R")
+library(msa)
+library(Biostrings)
+
+all_align = lapply(logpepsets,\(pepsets){
+  sapply(pepsets,\(pepset){
+    l=msaClustalW(AAStringSet(pepset), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
+    l= apply(as.matrix(l),1, paste,collapse="")
+    l
+    
+  })
+})
+save(all_ppm,all_align,file = "mixed-7graphs/ppm_pssm_w.RData")
+
+
+all_pssm = lapply(logpepsets,\(pepsets){
+  sapply(pepsets,\(pepset){
+    l=msaClustalW(AAStringSet(pepset), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
+    l= apply(as.matrix(l),1, paste,collapse="")
+    pssm(l)
+  
+  })
+})
+
+all_pssm_ = lapply(all_pssm,\(mots){
+  sapply(mots,\(mot){
+    mot = rbind(mot,rep(0,ncol(mot)))
+    rownames(mot)[nrow(mot)] = "-"
+    mot
+  })
+  
+})
+
+## freq_matrices
+plan(multisession(workers = 20))
+plan(sequential)
+all_ppm = lapply(logpepsets,\(pepsets){
+  sapply(pepsets,\(pepset){
+    require(msa)
+    
+    l=msaClustalW(AAStringSet(pepset), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
+    l= apply(as.matrix(l),1, paste,collapse="")
+    
+    freq_matrix(l,AA_STANDARD,ps_c = 1)
+  })
+  
+})
+save(all_ppm,file = "mixed-7graphs/ppm_pssm_w.RData")
+
+save(all_pssm,all_pssm_,all_ppm,file = "mixed-7graphs/ppm_pssm_w.RData")
+
+
+# compare to clusters without weights ----
+## tables with cluster distribution ----
+for(ab in abs){
+  path = paste0("mixed-7graphs/",ab,"/")
+  load(file = paste0(path,ab,"_",bc,"_","dbscan.RData"))
+  cldbsc_w = result_db[[1]]
+  load(file = paste0(path,ab,"dbscan.RData"))
+  cldbsc = result_db[[1]]
+  print(ab)
+  print(table(cldbsc,cldbsc_w))
+  }
 
 
 save(all_pssm,all_pssm_,all_ppm,file = "mixed-7graphs/ppm_pssm_w.RData")

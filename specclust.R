@@ -110,3 +110,4 @@ choose_kmeans = function(coord,opdim){
   clkmn=kmeans(projMx,kmN,iter.max = 1000, nstart = 50)$cluster
   return(list(clkmn, kmN))
 }
+>>>>>>> origin/Elena520
