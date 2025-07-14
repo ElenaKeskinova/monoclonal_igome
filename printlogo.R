@@ -11,3 +11,13 @@ printlogo = function(peps){
   print(ggseqlogo(unlist(m)))
   
 }
+
+logoal = function(peps){ # for aligned peptides
+  require(ggseqlogo)
+  require(ggplot2)
+  require(Biostrings)
+  
+  m = consensusMatrix(peps, as.prob=T)
+  print(ggseqlogo(unlist(m)))
+  
+}

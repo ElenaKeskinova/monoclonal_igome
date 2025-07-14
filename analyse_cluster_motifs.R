@@ -1,4 +1,6 @@
 # compare kld to kld from the random clusters, calculate z-scores, make graphics
+library(stats)
+library(gplm)
 
 
 # get random results
@@ -20,6 +22,10 @@ for(i in 1:4){
   
 }
 # calculate z scores from distribution of the kld of random clusters----
+kl = all_kld
+loglen = log10(lengths)
+len = lengths
+colcodes = numcodes
 z_sc = lapply(1:4,\(i){
   data = data.frame(x=log10(rnd_results[[i]][,3]),y=log10(rnd_results[[i]][,1]))
   real_l = loglen[which(colcodes==i)]
@@ -61,20 +67,21 @@ allp = p.adjust(allp,method = "BH")
 # make graphics----
 ### mapping distances
 
-load(file = "4st_generation_library/lib_allpeps_7nC.RData")
+load(file = "mixed-7graphs/lib_allpeps_7nC.RData")
 bkg_m = create_motif(peps_7nC) # motif from library
 bgmot = bkg_m@motif
 
 
-allp_mb = append(allp_m,bkg_m)
+allp_mb = append(allm_wp,bkg_m)  #allp_mb = append(allp_m,bkg_m) for clusters without weights
 m_comp_b = compare_motifs(allp_mb,tryRC = FALSE,min.mean.ic = 0.1,method = "EUC")
 plot2d = cmdscale(m_comp_b,2)
-rownames(plot2d) = c(names(allpepsets),"bkg")
+rownames(plot2d) = c(names(unlist(logpepsets,recursive = F)),"bkg") #rownames(plot2d) = c(names(allpepsets),"bkg")
 
 sign_p  = allp<0.01
 # each antibody
+nn = nrow(plot2d)
 for(i in 1:4){
-  plot(plot2d[88,1],plot2d[88,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("clusters of",abs[i]),xlab = "dimension 1",ylab = "dimension 2" )
+  plot(plot2d[nn,1],plot2d[nn,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("clusters of",abs[i]),xlab = "dimension 1",ylab = "dimension 2" )
   
   num = which(colcodes == i)
   o = order(len[num])
@@ -82,7 +89,7 @@ for(i in 1:4){
   p = sign_p[num]
   
   #significant
-  points(plot2d[num,][o,][p,],cex = log(sort(len[num][p]))/2,pch = 16,col = adjustcolor("orange", alpha.f = 0.7))
+  points(plot2d[num,][o,][p,],cex = log(sort(len[num][p]))/2,pch = 16,col = adjustcolor("orange", alpha.f = 0.5))
   #non-significant
   points(plot2d[num,][o,],cex = log(sort(len[num]))/2,col = adjustcolor("orange", alpha.f = 0.7))
 }
@@ -90,7 +97,7 @@ for(i in 1:4){
 # part of the poster:
 # all anti gp120 antibodies together
 colors = c("red","green","blue","orange")
-plot(plot2d[88,1],plot2d[88,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of anti-gp120\nantibodies"),xlab = "dimension 1",ylab = "dimension 2" )
+plot(plot2d[nn,1],plot2d[nn,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of anti-gp120\nantibodies"),xlab = "dimension 1",ylab = "dimension 2" )
 
 for(i in 2:4){
   
@@ -104,13 +111,13 @@ for(i in 2:4){
   #non-significant
   points(plot2d[num,][o,],cex = log(sort(len[num]))/2,col = adjustcolor(colors[i], alpha.f = 0.7))
 }
-legend("topleft",legend = abs[2:4],col = colors[2:4],pt.cex = 1.6,cex = 1.3,pch = 16,title = "Antibodies",border = F)
+legend("topright",legend = abs[2:4],col = colors[2:4],pt.cex = 1.6,cex = 1.3,pch = 16,title = "Antibodies",border = F)
 legend("bottomleft",x.intersp = 2,pt.cex = log((1000))/2,cex = 1.3,pch = 18,legend = "background")
 
 
 
 # only Herceptin
-plot(plot2d[88,1],plot2d[88,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of Herceptin"),xlab = "dimension 1",ylab = "dimension 2" )
+plot(plot2d[nn,1],plot2d[nn,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of Herceptin"),xlab = "dimension 1",ylab = "dimension 2" )
 
 for(i in 1:1){
   
