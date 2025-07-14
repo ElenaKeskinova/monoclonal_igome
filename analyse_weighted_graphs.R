@@ -16,6 +16,7 @@ for(ab in abs){
 source("specclust.R")
 
 for(ab in abs[1:4]){
+
   path = paste0("mixed-7graphs/",ab,"/")
   load(paste0(path,ab,"big7-logw.RData"))
   specclust(ab,lg,bc = "logw")
