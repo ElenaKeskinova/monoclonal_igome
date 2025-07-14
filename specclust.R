@@ -25,8 +25,8 @@ specclust <- function(ab, lg,bc) {
   arpopt=list(maxiter=100000, tol=1e-6)
   
   ncores=detectCores()-2
-  cpl=colorRampPalette(c("#000000FF","#0050AA9F","#10AA109F","#50AF3055","#FFFF009F","#FFA0009F","#B50000"), alpha=T)
-  
+  # cpl=colorRampPalette(c("#000000FF","#0050AA9F","#10AA109F","#50AF3055","#FFFF009F","#FFA0009F","#B50000"), alpha=T)
+  # 
   L=embed_laplacian_matrix(g, no=35, which="sa", type="I-DAD", options=arpopt)#
   opdim=dim_select(L$D)
   coord = L$X[,2:opdim]
