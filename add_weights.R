@@ -1,5 +1,5 @@
 # put weights on the edges of line graphs, according to the copy number of the respective sequences
-add_weights = function(ab){
+add_weights = function(ab,logw = F){
   require(future.apply)
   path = paste0("mixed-7graphs/",ab,"/")
   
@@ -10,9 +10,18 @@ add_weights = function(ab){
   v_freqs = V(G)$Freq
   names(v_freqs) = V(G)$name
   
+  if(logw == T){
+    v_freqs = log2(v_freqs)
+  }
+  
   lcs = V(lg)$name
   plan(multisession)
-  weights = future_sapply(E(lg),\(e){
+  weights = weights(lg,edg_lcs,v_freqs)
+  set_edge_attr(lg,name = "weight",value = weights)
+}
+
+weights = function(lg,edg_lcs,v_freqs){
+  future_sapply(E(lg),\(e){
     ee = ends(lg,e)
     ee1 = ee[1]
     ee2 = ee[2]
@@ -22,5 +31,4 @@ add_weights = function(ab){
     common = intersect(seqs1,seqs2)
     sum(v_freqs[common])
   })
-  set_edge_attr(lg,name = "weight",value = weights)
 }
