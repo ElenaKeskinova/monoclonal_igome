@@ -1,8 +1,10 @@
 # obtain aa freq distributions from the whole library
 
-lib4 = readLines(file("4st_generation_library/4st_generation_random_library_Filtered_AA.fs"))
+lib4 = readLines(file("D:/Elena/ban/Motifier_DataSet/4st_generation_library/4st_generation_random_library_Filtered_AA.fs"))
 libnames = lib4[seq(1, length(lib4), by = 2)]
 libpeps = lib4[seq(2, length(lib4), by = 2)]
+tpeps = table(libpeps)
+hist(log10(tpeps))
 # remove cystein
 peps_nC = sapply(libpeps, \(p){
   toupper(paste0(unlist(strsplit(p,""))[2:11],collapse = ""))

@@ -32,3 +32,21 @@ score = function(mot,epi){ # provide a pssm and an epitope as a character array
     }))
   }
 }
+
+score_blosum = function(mot,path,blosum){ # provide a ppm and an epitope as a character array
+  n = length(path)
+  if(n<=ncol(mot)){
+    max(sapply(1:(ncol(mot)-n+1),\(i){
+      
+      m = mot[,i:(i+n-1)]*cbind(blosum[,path]) # part of motif times substitution frequency of path aas
+      mean(colSums(m))
+    }))
+  } 
+  else{
+    max(sapply(1:(n - ncol(mot)+1),\(i){
+      
+      m = mot*cbind(blosum[,path[i:(i+ncol(mot)-1)]])
+      mean(colSums(m))
+    }))
+  }
+}

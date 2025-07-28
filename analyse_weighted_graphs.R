@@ -23,7 +23,7 @@ source("specclust.R")
 for(ab in abs[1:3]){
   path = paste0("mixed-7graphs/",ab,"/")
   load(paste0(path,ab,"big7-lw.RData"))
-  specclust(ab,lg,bc = "w")
+  cospecclust(ab,lg,bc = "w")
 }
 
 
@@ -53,9 +53,10 @@ source("dbclust.R")
 
 allpepsets_w = lapply(abs, \(ab){
   path = paste0("mixed-7graphs/",ab,"/")
-  load(paste0(path,ab,"big7or.RData"))
-  load(paste0(path,ab,"big7-lw.RData"))
   bc = "logw"
+  load(paste0(path,ab,"big7or.RData"))
+  load(paste0(path,ab,"big7-",bc,".RData"))
+  
   load(file = paste0(path,ab,"_",bc,"_","dbscan.RData"))
   load(file = paste0(path,ab,"_all_lcs.RData"))
   
@@ -74,8 +75,28 @@ allfreqs = future_lapply(1:4,\(i){
   
   sapply(allpepsets_w[[i]],\(set) freqs[set] )})
 
-logfreqs = lapply(allfreqs,\(fr) sapply(fr,\(f) round(log2(f))))
+# all_logfreqs = future_lapply(1:4,\(i){
+#   ab = abs[i]
+#   path = paste0("mixed-7graphs/",ab,"/")
+#   load(paste0(path,ab,"big7or.RData"))
+#   freqs= V(G)$Freq
+#   names(freqs) = V(G)$name
+#   
+#   oddsP = sapply(V(G)$name,\(p){
+#     p = unlist(strsplit(p,""))
+#     prob = prod(sapply(1:7,\(i) bgmot[p[i],i]))
+#     prob/(0.05**7)
+#   })
+#   freqs = freqs/oddsP
+#   m = 1-min(log2(freqs))
+#   freqs = log2(freqs+m)
+#   
+#   sapply(allpepsets_w[[i]],\(set) freqs[set] )})
+# logfreqs = lapply(all_logfreqs,\(fr) sapply(fr,\(f) round(log2(f)))) # from corrected weights
+# 
 
+
+logfreqs = lapply(allfreqs,\(fr) sapply(fr,\(f) round(log2(f))))
 logpepsets = lapply(1:4,\(i){
   lapply(1:length(logfreqs[[i]]),\(j){
     
@@ -117,12 +138,11 @@ all_align = lapply(logpepsets,\(pepsets){
 })
 
 ## freq_matrices
-all_ppm = future_lapply(logpepsets,\(pepsets){
-  sapply(pepsets,\(pepset){
-    require(msa)
-  l=msaClustalW(AAStringSet(pepset), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
-  l= apply(as.matrix(l),1, paste,collapse="")
-  freq_matrix(l,AA_STANDARD,ps_c = 1)
+## freq_matrices
+source("freq_matrix.R")
+all_ppm = future_lapply(all_align,\(pepsets){
+  sapply(pepsets,\(l){
+    freq_matrix(l,sort(AA_STANDARD),ps_c = 1)
   })
   
 })

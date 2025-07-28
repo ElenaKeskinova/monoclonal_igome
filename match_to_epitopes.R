@@ -1,154 +1,57 @@
-library(Biostrings)
-source("paths_scores_functions.R")
-# use all_pssm_ from the script create_motifs.R
-# take files with results from Pymol for contact amino acids on antigen surfaces, obtained from structures 1yyl,3lqa,2ny7,1n8z from pdb
-# make graphs from epitope amino acids, introduce gap nodes where distance is over 6 A , take all paths and find highest overlap score to each cluster
-
-
-AA_code = sapply(AMINO_ACID_CODE,toupper)
-AA_code = c(AA_code,"XXX")
-names(AA_code)[27] = "-"
-abs = c("Herceptin","21c","17b","b12")
-
-distances = lapply(abs,\(ab){ # distances between amino acids closer than 5 A to antibody, from PDB, calculated with Pymol
-  read.table(paste0("mixed-7graphs/epi_",ab,".txt"),header = T)
-})
-
-
-# clean from trash ----
-aanames1 = lapply(distances,\(df){
-  name1 =sapply(df$Residue1,\(r1){
-    paste0(unlist(strsplit(r1,""))[1:3],collapse = "")
-  })
-  name1
-  
-})
-aanames2 = lapply(distances,\(df){
-  name2 =sapply(df$Residue2,\(r1){
-    paste0(unlist(strsplit(r1,""))[1:3],collapse = "")
-  }) 
-  name2
-  
-})
-
+load(file = "epitope_graphs.RData")
+load(file = "mixed-7graphs/ppm_pssm_logw.RData")
 for(i in 1:4){
-  distances[[i]] = distances[[i]][which(aanames1[[i]]!="HOH" & (aanames2[[i]]!="HOH") & aanames1[[i]]!="NAG" & (aanames2[[i]]!="NAG")),]
-
+  names(all_ppm[[i]]) = clnames[[i]]
 }
+ppms = unlist(all_ppm,recursive = F)
 
-# make graphs ----
-### minimal graphs ----
-# start with small graphs and the add edges to connect all amino acids of the epitopes
-
-d = 6
-ds = lapply(distances,\(df){
-  df$Distance<=d
-  
-})
-
-graphs_min = lapply(1:4,\(i){
-  require(igraph)
-  e = ds[[i]]
-  edges = cbind(distances[[i]]$Residue1,distances[[i]]$Residue2)[e,]
-  graph_from_edgelist(edges, directed = F)
-})
-
-for(i in 1:4){plot(graphs_min[[i]],main = abs[i])}
+require(ggseqlogo)
+require(ggplot2)
+require(Biostrings)
 
 
-### select edges so that graphs are connected with minimal number of edges ----
-
-disttemp = lapply(distances,\(df){
-  df[df$Distance<=6,] 
-  
-})
-
-distscan = lapply(distances,\(df){ # between 6 and 12
-  df[df$Distance >6 & df$Distance <=12 ,]
-  
-})
-distscan = lapply(distscan,\(df){ # between 6 and 12
-  o = order(df$Distance) # put in ascending order
-  df[o,]
-  
-})
-
-
-gtemp = graphs_min # graphs to add edges to
-
-
-
-# iterate through nodes over 6 A to include the necessary ones for a connected graph
-for(i in 1:4){
-  df = distscan[[i]]
-  for(j in 1:nrow(df)){
-    vs = V(gtemp[[i]])$name
-    row = df[j,]
-    if((row$Residue1 %in% vs == F) | (row$Residue2 %in% vs == F) | components(gtemp[[i]])$membership[row$Residue1] != components(gtemp[[i]])$membership[row$Residue2] ){
-      d = row$Distance
-      # if the chosen edge connects 2 disconnected components, include it with a gap node in the middle
-      print(d)
-      if(d%/%6 == 1){ # 1 gap node
-        xnum = nrow(disttemp[[i]])
-        n1 = paste0("XXX",xnum) # "gap" node 
-        disttemp[[i]] = rbind(disttemp[[i]],c(row$Residue1,n1,d))
-        disttemp[[i]] = rbind(disttemp[[i]],c(n1,row$Residue2,d))
-        
-      }else if (row$Distance%/%6 == 2){ # 2 gap nodes
-        xnum = nrow(disttemp[[i]])
-        n1 = paste0("XXX",xnum)
-        n2 = paste0("XXX",xnum+1)
-        disttemp[[i]] = rbind(disttemp[[i]],c(row$Residue1,n1,d))
-        disttemp[[i]] = rbind(disttemp[[i]],c(n1,n2,d))
-        disttemp[[i]] = rbind(disttemp[[i]],c(n2,row$Residue2,d))
-      }
-      gtemp[[i]] = graph_from_data_frame(disttemp[[i]],directed = F)
-    }
-  }
-  
-}
-for(i in 1:4){plot(gtemp[[i]],main = abs[i])}
-
-g_full = gtemp
-
-# make AA 1 letter code as attribute
-g_full = lapply(g_full,\(g){
-  aas = sapply(V(g)$name,\(nm){
-    c3 = paste0(unlist(strsplit(nm,""))[1:3],collapse = ""); 
-    names(AA_code[which(AA_code==c3)])
-    
-  } )
-  set_vertex_attr(g,name = "AA", value = aas)
-  
-})
-
-# max scores all graphs vs all clusters ----
-load(file = "mixed-7graphs/all_pssm.RData")
-
-
-
-library(future.apply)
 library(vctrs)
+#try with blossum weights
+data("BLOSUM45")
+blosum = BLOSUM45[1:20,]
+blosum = cbind(blosum,rep(0,20))
+colnames(blosum)[ncol(blosum)] = "-"
+
 max_scores_all = future_sapply(1:4,\(ab_i){
   paths = longpaths(g_full[[ab_i]])
-  sapply(all_pssm_,\(mot){
+  sapply(ppms,\(mot){
     
     scores = unlist(sapply(paths,\(paths2) {
       paths2 = list_drop_empty(paths2)
       sapply(paths2,\(path){
-        score(mot,path)
+        n = length(path)
+        if(n<=ncol(mot)){
+          max(sapply(1:(ncol(mot)-n+1),\(i){
+            #sum(diag(mot[epi,i:(i+n-1)]))
+            m = mot[,i:(i+n-1)]*cbind(blosum[,path]) # part of motif times substitution frequency of path aas
+            mean(colSums(m))
+          }))
+        } 
+        else{
+          max(sapply(1:(n - ncol(mot)+1),\(i){
+            #sum(diag(mot[epi[i:(i+ncol(mot)-1)],]))
+            m = mot*cbind(blosum[,path[i:(i+ncol(mot)-1)]])
+            mean(colSums(m))
+          }))
+        }
       })
     }))
     max(scores)
   })
 })
 
-# make plots ----
-
+# plot score distributions
+library(vioplot)
+colors = c("red","green","blue","orange")
 for(i in 1:4){
-  l = (len[which(colcodes==i)])
-  o = order(l)
-  sc = max_scores_all[which(colcodes==i),i][o]
+  l = sapply(logfreqs[[i]],sum)
+  o = order(max_scores_all[which(codes==abs[i]),i])
+  sc = max_scores_all[which(codes==abs[i]),i][o]
   control = max_scores_all[,i]
   e = ecdf(control)
   qt = e(sc)
@@ -162,45 +65,249 @@ for(i in 1:4){
   points(sc, cex = 1.3)
   if(max(qt)>0.9){
     x = (1:length(sc)+0.2)
-    y = (sc+1.5)
+    y = (sc+ sd(max_scores_all)/4)
     text(x[qth], y[qth], labels = round(qt[qth],2), cex = 1.2)
     
   }
   
 }
 
+# all scores
+allpaths = lapply(g_full,\(g){
+  paths = longpaths(g)
+  paths = unlist(paths,recursive = F)
+  paths = list_drop_empty(paths)
+  sapply(paths,\(p) paste0(p,collapse = ""))
+})
 
-# check which parts of epitope are similar to the clusters
+scores_all = future_sapply(1:4,\(ab_i){
+  paths = longpaths(g_full[[ab_i]])
+  sapply(ppms,\(mot){
+    paths = unlist(paths,recursive = F)
+    paths = list_drop_empty(paths)
+    scores = unlist(sapply(paths,\(path) {
+      
+        n = length(path)
+        if(n<=ncol(mot)){
+          max(sapply(1:(ncol(mot)-n+1),\(i){
+            #sum(diag(mot[epi,i:(i+n-1)]))
+            
+            m = mot[,i:(i+n-1)]*cbind(blosum[,path]) # part of motif times substitution frequency of path aas
+            mean(colSums(m))
+          }))
+        } 
+        else{
+          max(sapply(1:(n - ncol(mot)+1),\(i){
+            #sum(diag(mot[epi[i:(i+ncol(mot)-1)],]))
+            m = mot*cbind(blosum[,path[i:(i+ncol(mot)-1)]])
+            mean(colSums(m))
+          }))
+        }
+    
+    }))
+    scores
+  })
+})
 
 for(i in 1:4){
+  rownames(scores_all[[i]]) = allpaths[[i]]
+}
+
+# motifs from each graph vs all paths -> access best scores----
+gmots = lapply(allpaths,\(paths){
+  l=msaClustalW(AAStringSet(paths), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
+  l= apply(as.matrix(l),1, paste,collapse="")
+  freq_matrix(l,AA_STANDARD,ps_c = 1)
+
+})
+names(gmots) = abs
+##scores ----
+epi_scores = future_lapply(allpaths,\(paths){
   
-  pssm = all_pssm_[which(colcodes==i)]
-  
-  sc = max_scores_all[which(colcodes==i),i]
-  control = max_scores_all[,i]
+  sapply(gmots,\(mot){
+    
+      scores = unlist(sapply(paths,\(path) {
+        path = unlist(strsplit(path,""))
+        score_blosum(mot,path,blosum)
+        
+      }))
+      names(scores) = paths
+      scores
+
+  })
+})
+
+max_epi_scores = future_sapply(epi_scores,\(mat){
+  apply(mat,2,max)
+})
+
+
+# random motifs ----
+
+ag_aaprob = read.csv(file = "AgAbIFprobs.csv")
+aa_prob = ag_aaprob$p
+names(aa_prob) = ag_aaprob$X
+N = sample(20:1000,200,replace = T)
+rnd_mot = sapply(N,\(n){
+  peps = sapply(1:n,\(i){
+    paste0(sample(AA_STANDARD,7,prob = aa_prob,replace = T),collapse = "")
+  })
+  l=msaClustalW(AAStringSet(peps), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
+  l= apply(as.matrix(l),1, paste,collapse="")
+  freq_matrix(l,AA_STANDARD,ps_c = 1)
+
+})
+
+rnd_scores = future_sapply(allpaths,\(paths){
+  sapply(rnd_mot,\(mot){
+    scores = unlist(sapply(paths,\(path) {
+      path = unlist(strsplit(path,""))
+      score_blosum(mot,path,blosum)
+      
+    }))
+    
+    max(scores)
+    
+  })
+})
+save(rnd_scores, file = "rnd_motif_scores.RData")
+hist(rnd_scores)
+
+
+##rnd motifs which are from similar peptides----
+N = sample(20:1000,200,replace = T)
+rnd_good = sapply(N,\(n){
+  peps = list()
+  peps[[1]] = sample(AA_STANDARD,7,prob = aa_prob,replace = T)
+  for(i in 2:n){
+    j = sample(1:(i-1),1)
+    k = sample(1:7,2)
+    aa = sample(AA_STANDARD,2,prob = aa_prob,replace = T)
+    pep = peps[[j]]
+    pep[k] = aa 
+    peps[[i]] = pep
+  }
+  peps = sapply(peps,\(pep) paste0(pep,collapse = ""))
+  l=msaClustalW(AAStringSet(peps), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
+  l= apply(as.matrix(l),1, paste,collapse="")
+  freq_matrix(l,AA_STANDARD,ps_c = 1)
+})
+
+save(rnd_good,rnd_mot,file = "rnd_motifs.RData")
+
+rnd_scores_good = future_sapply(allpaths,\(paths){
+  sapply(rnd_good,\(mot){
+    scores = unlist(sapply(paths,\(path) {
+      path = unlist(strsplit(path,""))
+      score_blosum(mot,path,blosum)
+      
+    }))
+    
+    max(scores)
+    
+  })
+})
+save(rnd_scores,rnd_scores_good, file = "rnd_motif_scores.RData")
+hist(rnd_scores_good)
+
+## also with reps----
+repfreqs = table(unlist(logfreqs))/sum(table(unlist(logfreqs))) 
+N = sample(10:1000,200,replace = T)
+plan(multisession)
+rnd_mot_reps = future_sapply(N,\(n){
+  reps = sample(names(repfreqs),n,prob = repfreqs,replace=T)
+  peps = list()
+  peps[[1]] = sample(AA_STANDARD,7,prob = aa_prob,replace = T)
+  for(i in 2:n){
+    j = sample(1:(i-1),1)
+    k = sample(1:7,2)
+    aa = sample(AA_STANDARD,2,prob = aa_prob,replace = T)
+    pep = peps[[j]]
+    pep[k] = aa 
+    peps[[i]] = pep
+  }
+  peps = sapply(peps,\(pep) paste0(pep,collapse = ""))
+  peps = rep(peps,reps)
+  l=msaClustalW(AAStringSet(peps), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
+  l= apply(as.matrix(l),1, paste,collapse="")
+  freq_matrix(l,AA_STANDARD,ps_c = 1)
+},future.seed = T)
+
+save(rnd_good,rnd_mot,rnd_mot_reps,file = "rnd_motifs.RData")
+
+rnd_scores_reps = future_sapply(allpaths,\(paths){
+  sapply(rnd_mot_reps,\(mot){
+    scores = unlist(sapply(paths,\(path) {
+      path = unlist(strsplit(path,""))
+      score_blosum(mot,path,blosum)
+      
+    }))
+    
+    max(scores)
+    
+  })
+})
+save(rnd_scores,rnd_scores_good,rnd_scores_reps, file = "rnd_motif_scores.RData")
+hist(rnd_scores_reps)
+
+
+# load from big computer
+load(file ='rnd_motifs_.RData')
+load(file = "rnd_motif_scores_.RData")
+
+#plot with random scores as controls----
+for(i in 1:4){
+  l = sapply(logfreqs[[i]],sum)
+  o = order(max_scores_all[which(codes==abs[i]),i])
+  sc = max_scores_all[which(codes==abs[i]),i][o]
+  control =rnd_scores_reps[,i]
   e = ecdf(control)
   qt = e(sc)
-  qth = which(qt>0.8)
+  p = 1-qt
+  p = p.adjust(p)
   
-  paths = longpaths(g_full[[i]])
-  printpaths = unlist(sapply(paths,\(paths2) {
-    paths2 = list_drop_empty(paths2)
-    sapply(paths2,\(path){
-      paste(path,collapse = "")
-    })
-  }))
-  for(q in qth){
-    mot = pssm[[q]]
-    scores = unlist(sapply(paths,\(paths2) {
-      paths2 = list_drop_empty(paths2)
-      sapply(paths2,\(path){
-        score(mot,path)
-      })
-    }))
-    jj = which.max(scores)
-    print(paste(abs[i],q,round(scores[jj],2), printpaths[[jj]]))
+  qth = which(p< 0.1)
   
+  names(p) = allnames[which(codes==abs[i])][o]
+  print(p)
+  
+  plot(sc, col = colors[i], ylim = range(max_scores_all),pch = 16,cex = 1.3,main = paste(abs[i], "with rnd motifs"),ylab = "scores",xlab = "smallest to largest cluster")
+  
+  colin = "lightgrey"
+  colbd = "grey"
+  vioplot(control,add = T,at = 1.5,wex = 1.5, col=colin, border=colbd, rectCol=colbd, lineCol=colbd)
+  points(sc, col = colors[i],pch = 16,cex = 1.3)
+  points(sc, cex = 1.3)
+  points(1,max_epi_scores[i,i],cex = 1.3)
+  if(min(p)<0.1){
+    x = (1:length(sc)+0.2)
+    y = (sc+ sd(max_scores_all)/4)
+    text(x[qth], y[qth], labels = round(p[qth],2), cex = 1.2)
+    
   }
   
-  
 }
+allal = unlist(all_align,recursive = F)
+
+pdf(file = "all_mot_dbscan.pdf",width=5, height = 5)
+
+for (n in allnames[1:93]){
+  logoal(allal[[n]],nm = paste(n,"peps:",length(allal[[n]])))
+}
+dev.off()
+
+epi_p = sapply(1:4,\(i){
+  l = sapply(logfreqs[[i]],sum)
+  o = order(max_scores_all[which(codes==abs[i]),i])
+  sc = max_scores_all[which(codes==abs[i]),i][o]
+  control =rnd_scores_reps[,i]
+  e = ecdf(control)
+  qt = e(sc)
+  p = 1-qt
+  p = p.adjust(p)
+  
+  qth = which(p< 0.1)
+  
+  names(p) = allnames[which(codes==abs[i])][o]
+  p
+})

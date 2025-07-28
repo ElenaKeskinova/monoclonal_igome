@@ -2,60 +2,64 @@
 
 
 # get random results
-gsizes = sapply(abs,\(ab){
-  path = paste0("mixed-7graphs/",ab,"/")
-  f = paste0(path,ab,"big7or.RData")
-  load(f)
-  vcount(G)
-})
-rnd_results = lapply(gsizes,\(vc) {load(paste0("mixed-7graphs/",vc, "_res_l.RData" ));res})
+load(file="rnd_len_kld.RData")
 
-for(i in 1:4){ 
-  data = data.frame(x=log10(rnd_results[[i]][,3]),y=log10(rnd_results[[i]][,1]))
-  
-  model=kreg(data$x,data$y,grid = data$x)
-  ii = order(data$x)
-  res = (model$y-data$y[ii])
-  plot(model$x,res,col = adjustcolor("black",alpha.f = 0.2),pch = 16,main = paste(abs[i], "log"))
-  
-}
 # calculate z scores from distribution of the kld of random clusters----
-z_sc = lapply(1:4,\(i){
-  data = data.frame(x=log10(rnd_results[[i]][,3]),y=log10(rnd_results[[i]][,1]))
-  real_l = loglen[which(colcodes==i)]
-  names(real_l) = names(len[which(colcodes==i)])
-  real_k = log10(kl[which(colcodes==i)])
-  names(real_k)= names(kl[which(colcodes==i)])
-  model=kreg(data$x,data$y,grid = data$x)#Scott's rule of thumb,bandwidth = 11.3
-  pred =kreg(data$x,data$y,grid = real_l,bandwidth = model$bandwidth)
-  ii = order(data$x)
-  sq_res = (model$y-data$y[ii])**2
-  #hist(sq_res)
-  mod_res = kreg(model$x,sq_res,grid = data$x)#,bandwidth = 11.3
-  
-  pred_res = kreg(model$x,sq_res,grid = loglen[which(colcodes==i)],bandwidth = mod_res$bandwidth) # var predictions for real data
-  sd = sqrt(pred_res$y)
-  
-  ij = order(real_l)
-  
-  z = as.vector((real_k[ij]-pred$y)/sd)
-  big = which(is.na(pred$y)) # out of the range of the randomly generated clusters
-  l = length(model$x)
-  
- 
-  m = which.max(pred$x[-big])
-  z[big] = as.vector((real_k[ij][big]-pred$y[-big][m])/sd[-big][m])
-  names(z) = names(sort(real_l))
-  z
-  
-})
+# z_sc = lapply(1:4,\(i){
+#   data = data.frame(x=log10(rnd_results[[i]][,3]),y=log10(rnd_results[[i]][,1]))
+#   real_l = loglen[which(colcodes==i)]
+#   names(real_l) = names(len[which(colcodes==i)])
+#   real_k = log10(kl[which(colcodes==i)])
+#   names(real_k)= names(kl[which(colcodes==i)])
+#   model=kreg(data$x,data$y,grid = data$x)
+#   pred =kreg(data$x,data$y,grid = real_l,bandwidth = model$bandwidth)
+#   ii = order(data$x)
+#   sq_res = (model$y-data$y[ii])**2
+#   #hist(sq_res)
+#   mod_res = kreg(model$x,sq_res,grid = data$x)#,bandwidth = 11.3
+#   
+#   pred_res = kreg(model$x,sq_res,grid = loglen[which(colcodes==i)],bandwidth = mod_res$bandwidth) # var predictions for real data
+#   sd = sqrt(pred_res$y)
+#   
+#   ij = order(real_l)
+#   
+#   z = as.vector((real_k[ij]-pred$y)/sd)
+#   big = which(is.na(pred$y)) # out of the range of the randomly generated clusters
+#   l = length(model$x)
+#   
+#  
+#   m = which.max(pred$x[-big])
+#   z[big] = as.vector((real_k[ij][big]-pred$y[-big][m])/sd[-big][m])
+#   names(z) = names(sort(real_l))
+#   z
+#   
+# })
+
+data = data.frame(log10(rnd_len_kld))
+real_l = loglen
+names(real_l) = names(len)
+real_k = log10(kl)
+names(real_k)= names(kl)
+model=kreg(data$l,data$kl,grid = data$l)#Scott's rule of thumb for bandwidth 
+pred =kreg(data$l,data$kl,grid = real_l,bandwidth = model$bandwidth)
+ii = order(data$l)
+sq_res = (model$y-data$kl[ii])**2
+
+# calculate variance as prediction of residuals:
+mod_res = kreg(model$x,sq_res,grid = data$l)
+pred_res = kreg(model$x,sq_res,grid = real_l,bandwidth = mod_res$bandwidth) # variance predictions for real data
+sd = sqrt(pred_res$y)
+
+ij = order(real_l)
+z_sc = as.vector((real_k[ij]-pred$y)/sd) #ordered
+names(z_sc) = names(real_l[ij])
 
 
-# p- values
-allp = sapply(unlist(z_sc),\(z){
+# p- values----
+allp = sapply((z_sc),\(z){
   pnorm(z,lower.tail = F)
 })
-allp = p.adjust(allp,method = "BH")
+allp = p.adjust(allp,method = "BH") # ordered
 
 
 # make graphics----
@@ -66,17 +70,18 @@ bkg_m = create_motif(peps_7nC) # motif from library
 bgmot = bkg_m@motif
 
 
-allp_mb = append(allp_m,bkg_m)
+allp_mb = append(allm_wp,bkg_m)
 m_comp_b = compare_motifs(allp_mb,tryRC = FALSE,min.mean.ic = 0.1,method = "EUC")
 plot2d = cmdscale(m_comp_b,2)
 rownames(plot2d) = c(names(allpepsets),"bkg")
 
 sign_p  = allp<0.01
+nn = nrow(plot2d)
 # each antibody
 for(i in 1:4){
-  plot(plot2d[88,1],plot2d[88,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("clusters of",abs[i]),xlab = "dimension 1",ylab = "dimension 2" )
+  plot(plot2d[nn,1],plot2d[nn,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("clusters of",abs[i]),xlab = "dimension 1",ylab = "dimension 2" )
   
-  num = which(colcodes == i)
+  num = which(numcodes == i)
   o = order(len[num])
   
   p = sign_p[num]
@@ -90,42 +95,42 @@ for(i in 1:4){
 # part of the poster:
 # all anti gp120 antibodies together
 colors = c("red","green","blue","orange")
-plot(plot2d[88,1],plot2d[88,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of anti-gp120\nantibodies"),xlab = "dimension 1",ylab = "dimension 2" )
+plot(plot2d[nn,1],plot2d[nn,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of anti-gp120\nantibodies"),xlab = "dimension 1",ylab = "dimension 2" )
 
 for(i in 2:4){
   
-  num = which(colcodes == i)
+  num = which(numcodes == i)
   o = order(len[num])
   
   p = sign_p[num]
   
   #significant
-  points(plot2d[num,][o,][p,],cex = log(sort(len[num][p]))/2,pch = 16,col = adjustcolor(colors[i], alpha.f = 0.5))
+  points(plot2d[num,][o,][p,],cex = log(sort(len[num][p]))/3,pch = 16,col = adjustcolor(colors[i], alpha.f = 0.5))
   #non-significant
-  points(plot2d[num,][o,],cex = log(sort(len[num]))/2,col = adjustcolor(colors[i], alpha.f = 0.7))
+  points(plot2d[num,][o,],cex = log(sort(len[num]))/3,col = adjustcolor(colors[i], alpha.f = 0.7))
 }
 legend("topleft",legend = abs[2:4],col = colors[2:4],pt.cex = 1.6,cex = 1.3,pch = 16,title = "Antibodies",border = F)
-legend("bottomleft",x.intersp = 2,pt.cex = log((1000))/2,cex = 1.3,pch = 18,legend = "background")
+legend("bottomleft",x.intersp = 2,pt.cex = log((1000))/4,cex = 1.3,pch = 18,legend = "background")
 
 
 
 # only Herceptin
-plot(plot2d[88,1],plot2d[88,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of Herceptin"),xlab = "dimension 1",ylab = "dimension 2" )
+plot(plot2d[nn,1],plot2d[nn,2],cex = log((1000))/2,pch = 18,xlim =range( plot2d[,1]),ylim = range(plot2d[,2]),main = paste("Clusters of Herceptin"),xlab = "dimension 1",ylab = "dimension 2" )
 
 for(i in 1:1){
   
-  num = which(colcodes == i)
+  num = which(numcodes == i)
   o = order(len[num])
   
   p = sign_p[num]
   
   #significant
-  points(plot2d[num,][o,][p,],cex = log(sort(len[num][p]))/2,pch = 16,col = adjustcolor(colors[i], alpha.f = 0.5))
+  points(plot2d[num,][o,][p,],cex = log(sort(len[num][p]))/3,pch = 16,col = adjustcolor(colors[i], alpha.f = 0.5))
   #non-significant
-  points(plot2d[num,][o,],cex = log(sort(len[num]))/2,col = adjustcolor(colors[i], alpha.f = 0.7))
+  points(plot2d[num,][o,],cex = log(sort(len[num]))/3,col = adjustcolor(colors[i], alpha.f = 0.7))
 }
 #legend("topleft",legend = abs[1],col = colors[1],pt.cex = 1.5,pch = 16,title = "Antibodies",border = F)
-legend("bottomleft",x.intersp = 2,pt.cex = log((1000))/2,cex = 1.3,pch = 18,legend = "background")
+legend("bottomleft",x.intersp = 2,pt.cex = log((1000))/4,cex = 1.3,pch = 18,legend = "background")
 points(plot2d["Herceptin_27",1],plot2d["Herceptin_27",2],pch = 4)
 
 
@@ -138,4 +143,185 @@ legend("center",legend = c("10","50","100","500"),col = adjustcolor(colors[1], a
 plot(1, type = "n", xlab = "", ylab = "", axes = FALSE, frame.plot = FALSE)
 legend("center",legend = abs,col = colors,pt.cex = 1.6,cex = 1.3,pch = 16,title = "Antibodies",border = F)
 
+# calculate Bhattacharyya coefficient and distance
+allnames = c(names(unlist(logpepsets,recursive = F)),"bkg")
+all_motifs = sapply(unlist(all_ppm,recursive = F), create_motif)
+allp_mb = append(all_motifs,bkg_m)
+m_comp_b = compare_motifs(allp_mb,tryRC = FALSE,min.mean.ic = 0.01,method = "BHAT")
+m_comp_b = -log(m_comp_b)
+colnames(m_comp_b) = allnames
+# 3d pictures all abs together ----
 
+allp_mb = append(allm_w,bkg_m)
+m_comp_b = compare_motifs(allp_mb,tryRC = FALSE,min.mean.ic = 0.1,method = "EUC")
+plot_3d = cmdscale(m_comp_b,3)
+rownames(plot_3d) = c(names(unlist(logpepsets,recursive = F)),"bkg")
+
+psl = transform_pseudo_log(sigma=0.01)
+plot_3d = psl$transform(plot_3d)
+
+sign_p  = allp<0.01
+nn = nrow(plot_3d)
+# all  antibodies together
+colors = c("red","green","blue","orange")
+d1 = 1
+d2 = 2
+plot(plot_3d[nn,d1],plot_3d[nn,d2],cex = log((1000))/2,pch = 18,xlim =range( plot_3d[,1]),ylim = range(plot_3d[,2]),main = paste("Clusters of all antibodies"),xlab = paste("dimension",d1),ylab = paste("dimension",d2) )
+
+for(i in 1:4){
+  
+  num = which(numcodes == i)
+  count = length(num)
+  
+  p = sign_p[allnames[num]]
+  
+  #significant
+  points(plot_3d[num,c(d1,d2)][p,],cex = log((len[num][p]))/3,pch = 16,col = adjustcolor(colors[i], alpha.f = 0.5))
+  #non-significant
+  points(plot_3d[num,c(d1,d2)],cex = log((len[num]))/3,col = adjustcolor(colors[i], alpha.f = 0.7))
+  
+  #top 3 matches to epitope
+  #top3 = names(which(epi_p[[i]][(count-2):(count)]<0.5))
+  top3 = names((epi_p[[i]][(count-2):(count)]))
+  points(plot_3d[top3,c(d1,d2)],cex = log((len[top3]))/3,pch = 8,col = adjustcolor("black", alpha.f = 1))
+}
+legend("topleft",legend = abs[1:4],col = colors[1:4],pt.cex = 1.6,cex = 1.3,pch = 16,title = "Antibodies",border = F)
+legend("bottomleft",x.intersp = 2,pt.cex = log((1000))/4,cex = 1.3,pch = 18,legend = "background")
+
+plot3d(plot_3d,col = c(colors[numcodes],"black"),size = 5)
+
+rndpep = sapply(1:1000,\(i){
+  paste(sample(sort(AA_STANDARD), 7,prob = rowSums(bgmot)/7, replace = TRUE), collapse = "")
+})
+rndpepm = sapply(rndpep,\(p) create_motif(p,alphabet = "AA"))
+
+rndpepm = (future_sapply(rnd_pepsets,\(set){
+  create_motif(set,alphabet = 'AA')
+  }))
+allp_rnd = append(allm_w,list(bkg_m,rndpepm))
+allp_rnd = unlist(allp_rnd,recursive = F)
+nnr =length(allp_rnd)
+m_comp_b = compare_motifs(allp_rnd,tryRC = FALSE,min.mean.ic = 0.1,method = "EUC")
+cmd = cmdscale(m_comp_b,nnr-1)
+rownames(cmd)[1:nn] = c(names(unlist(logpepsets,recursive = F)),"bkg")
+
+
+library(FactoMineR)
+pcar = PCA(cmd[(nn+1):nnr,],ncp=2)
+colnames(cmd) = colnames(pcar$call$X)
+pcall = predict(pcar,newdata = cmd)
+pcpl = pcall$coord
+
+# pcall = PCA(cmd,ncp=2)
+# pcpl = pcall$ind$coord
+
+plot(pcpl[(nn+1):nnr,d1],pcpl[(nn+1):nnr,d2],cex = log((10))/2,pch = 0,main = paste("Clusters of all antibodies"),xlab = paste("dimension",d1),ylab = paste("dimension",d2),col = adjustcolor("grey", alpha.f = 0.3),xlim = range(pcpl[,d1]),ylim = range(pcpl[,d2]) )
+points(pcpl[nn,d1],pcpl[nn,d2],cex = log(1000)/2,pch = 18,col = "black" )
+
+
+plot(pcar$ind$coord[,1:2],cex = log((10))/2,pch = 0,main = paste("Clusters of all antibodies"),xlab = paste("dimension",d1),ylab = paste("dimension",d2),col = adjustcolor("grey", alpha.f = 0.3),xlim = range(pcar$ind$coord[,d1]),ylim = range(pcar$ind$coord[,d2]) )
+points(pcpl[nn,d1],pcpl[nn,d2],cex = log(1000)/2,pch = 18,col = "black" )
+
+
+allp_rnd_sep = lapply(1:4,\(i) unlist(list(allp_rnd[which(numcodes == i)],allp_rnd[94:nnr]),recursive = F))
+
+cmd_all = lapply(allp_rnd_sep,\(mots)  cmdscale(compare_motifs(mots,tryRC = FALSE,min.mean.ic = 0.1,method = "EUC"),2))
+
+for(i in 1:4){
+  b = table(numcodes)[i]+1
+  plot_3d = cmd_all[[i]]
+  num = which(numcodes == i)
+  count = length(num)
+  rownames(plot_3d)[1:count] = allnames[num]
+  
+  
+  
+  p = sign_p[allnames[num]]
+  
+  # random
+  plot(plot_3d[(b+1):nrow(plot_3d),c(d1,d2)],cex = log((10))/2,pch = 0,xlab = paste("dimension",d1),ylab = paste("dimension",d2),col = adjustcolor("grey", alpha.f = 0.4),xlim =range( plot_3d[,1]),ylim = range(plot_3d[,2]),main = abs[i])
+  # background
+  points(plot_3d[b,d1],plot_3d[b,d2],cex = log((100))/2,pch = 18,col = "black" )
+
+  #significant
+  points(plot_3d[1:(b-1),c(d1,d2)][p,],cex = log((len[num][p]))/3,pch = 16,col = adjustcolor(colors[i], alpha.f = 0.5))
+  #non-significant
+  points(plot_3d[1:(b-1),c(d1,d2)],cex = log((len[num]))/3,col = adjustcolor(colors[i], alpha.f = 0.7))
+  
+  top3 = names((epi_p[[i]][(count-2):(count)]))
+  points(plot_3d[top3,c(d1,d2)],cex = log((len[top3]))/3,pch = 8,col = adjustcolor("black", alpha.f = 1))
+}
+
+dist_all = sapply(1:4, \(i){
+  coord = cmd_all[[i]][which(numcodes == i),]
+  d = sqrt(rowSums(coord**2))
+  names(d)=allnames[which(numcodes == i)]
+  d
+  
+})
+
+dist_sign = sapply(1:4, \(i){
+  num = which(numcodes == i)
+  count = length(num)
+  d = dist_all[[i]]
+  d[names(which(epi_p[[i]][(count-4):(count)]<0.1))]
+  
+})
+dist_sign = list_drop_empty(dist_sign)
+
+dist_unsign = sapply(1:4, \(i){
+  num = which(numcodes == i)
+  count = length(num)
+  d = dist_all[[i]]
+  d[names((epi_p[[i]][1:(count-5)]))]
+  
+})
+boxplot(unlist(dist_unsign),unlist(dist_sign),varwidth = T,notch = T)
+
+plot_3d = cmd
+# random
+  plot(plot_3d[95:nrow(plot_3d),c(d1,d2)],cex = log((10))/2,pch = 0,xlab = paste("dimension",d1),ylab = paste("dimension",d2),col = adjustcolor("grey", alpha.f = 0.4),xlim =range( plot_3d[,1]),ylim = range(plot_3d[,2]),main = abs[i])
+  # background
+  points(plot_3d[94,d1],plot_3d[94,d2],cex = log((100))/2,pch = 18,col = "black" )
+
+for(i in 1:4){
+  b = table(numcodes)[i]+1
+  plot_3d = cmd_all[[i]]
+  
+  num = which(numcodes == i)
+  count = length(num)
+  
+  p = sign_p[allnames[num]]
+  
+  
+  #significant
+  points(plot_3d[num,c(d1,d2)][p,],cex = log((len[num][p]))/3,pch = 16,col = adjustcolor(colors[i], alpha.f = 0.5))
+  #non-significant
+  points(plot_3d[num,c(d1,d2)],cex = log((len[num]))/3,col = adjustcolor(colors[i], alpha.f = 0.7))
+  
+}
+
+  
+  # graph from clusters and modularity ----
+dist_matrix = compare_motifs(allm_w,tryRC = FALSE,min.mean.ic = 0.1,method = "EUC")
+rownames(dist_matrix) = allnames[1:93]
+colnames(dist_matrix) = allnames[1:93]
+adj_matrix = dist_matrix<=max(treedist)
+g_mots = graph_from_adjacency_matrix(adj_matrix,mode = "undirected",diag = F)
+V(g_mots)$name = allnames[1:93]
+edge_density(g_mots)
+
+edgedist = sapply(E(g_mots),\(e) {
+  ee = ends(g_mots,e)
+  dist_matrix[ee[1],ee[2]]
+})
+modularity(g_mots,membership = numcodes,weights = 1/edgedist)
+mintree = mst(g_mots,weights = edgedist)
+treedist = sapply(E(mintree),\(e) {
+  ee = ends(g_mots,e)
+  dist_matrix[ee[1],ee[2]]
+})
+plot(g_mots)
+hist(dist_matrix)
+
+control_modularity
