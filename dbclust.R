@@ -71,4 +71,70 @@ dbclust_peps = function(g,lg)
   
 }
 
+gen_pepsets = function(lg,g,edg_lcs,result_db){
+  require(vctrs)
+  require(igraph)
+  require(purrr)
+  cldbsc = result_db[[1]]
+  ncl = result_db[[2]]
+  
+  cls = sort(unique(cldbsc))
+  i = which.max(components(lg)$csize)
+  lgg = subgraph(lg,V(lg)[components(lg)$membership == i])
+  
+  lcssets = lapply(cls[which(cls!=0)], function(i) V(lgg)[which(cldbsc==i)]$name)
+  lcsgsets = lapply(lcssets, \(set) {
+    sg = subgraph(lg, set)
+    c = which(igraph::components(sg)$csize >=10)
+    lcscon = lapply(c, function(ci) V(sg)[which(igraph::components(sg)$membership == ci)]$name)
+    lcscon
+  })
+  lcsgsets = list_flatten(lcsgsets)
+  pepsets = lapply(lcsgsets,\(set) {
+    peps = unlist(sapply(set,\(lcs) c(edg_lcs[which(edg_lcs[,3]==lcs),1:2])))
+    unique(c(peps))
+  })
+  ic = which(igraph::components(g)$csize >=10 & igraph::components(g)$csize<max(igraph::components(g)$csize))#
+  peps2 = lapply(ic, function(c) V(g)[which(igraph::components(g)$membership == c)]$name)
+  if(length(peps2)==1){
+    pepsets = append(peps2,pepsets)
+  } else { pepsets = c(pepsets,peps2)}
+  
+  pepsets = list_drop_empty(pepsets)
+  return(pepsets)
+  
+}
 
+gen_pepsets_old = function(lg,g,edg_lcs,result_db){
+  require(vctrs)
+  require(igraph)
+  require(purrr)
+  cldbsc = result_db[[1]]
+  ncl = result_db[[2]]
+  
+  cls = sort(unique(cldbsc))
+  i = which.max(components(lg)$csize)
+  lgg = subgraph(lg,V(lg)[components(lg)$membership == i])
+  # 
+  lcssets = lapply(cls[which(cls!=0)], function(i) V(lgg)[which(cldbsc==i)]$name)
+  # lcsgsets = lapply(lcssets, \(set) {
+  #   sg = subgraph(lg, set)
+  #   c = which(igraph::components(sg)$csize >=10)
+  #   lcscon = lapply(c, function(ci) V(sg)[which(igraph::components(sg)$membership == ci)]$name)
+  #   lcscon
+  # })
+  # lcsgsets = list_flatten(lcsgsets)
+  pepsets = lapply(lcssets,\(set) {
+    peps = unlist(sapply(set,\(lcs) c(edg_lcs[which(edg_lcs[,3]==lcs),1:2])))
+    unique(c(peps))
+  })
+  ic = which(igraph::components(g)$csize >=10 & igraph::components(g)$csize<max(igraph::components(g)$csize))#
+  peps2 = lapply(ic, function(c) V(g)[which(igraph::components(g)$membership == c)]$name)
+  if(length(peps2)==1){
+    pepsets = append(peps2,pepsets)
+  } else { pepsets = c(pepsets,peps2)}
+  
+  pepsets = list_drop_empty(pepsets)
+  return(pepsets)
+  
+}

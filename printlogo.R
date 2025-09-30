@@ -1,15 +1,16 @@
 # print a logo of a chosen set of peptides
-printlogo = function(peps){
+printlogo = function(peps, nm = ""){
   require(ggseqlogo)
   require(ggplot2)
   require(Biostrings)
   require(msa)
   
   l=msaClustalW(AAStringSet(peps), gapOpening = 2, gapExtension = 1, maxiters=1000, substitutionMatrix = "blosum")
-  l= apply(as.matrix(l),1, paste,collapse="")
+  l= apply(as.matrix(l@unmasked),1, paste,collapse="")
   
   m = consensusMatrix(l, as.prob=T)
-  print(ggseqlogo(unlist(m)))
+  print(ggseqlogo(unlist(m))+
+          ggtitle(nm))
   
 }
 

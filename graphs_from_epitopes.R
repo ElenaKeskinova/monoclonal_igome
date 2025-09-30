@@ -1,7 +1,8 @@
 library(Biostrings)
 source("paths_scores_functions.R")
 # use all_pssm_ from the script create_motifs.R
-# take files with results from Pymol for contact amino acids on antigen surfaces, obtained from structures 1yyl,3lqa,2ny7,1n8z from pdb
+# take files with results from Pymol for contact amino acids on antigen surfaces, 
+# obtained from structures 1yyl,3lqa,2ny7,1n8z from pdb structure with contact cutoff 5A
 # make graphs from epitope amino acids, introduce gap nodes where distance is over 6 A , take all paths and find highest overlap score to each cluster
 
 
