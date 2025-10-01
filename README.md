@@ -10,16 +10,20 @@ transform_peptides
 
 create_graphs
 
-spectral_clustering
+analyse_weighted_graphs : spectral embedding, clustering and motifs
 
-create_motifs
+rnd_simulation_clusters : random peptides, graphs, clustering
 
-rnd_simulation_clusters : random peptides, graphs, clustering, compute motif distances to background
+rnd_kld :  compute motif distances to background
 
 analyse_cluster_motifs: compare real to random clusters
 
+feature_selection
+
 match_to_epitope
 
-feature_selection
+docked_rename_selected.R
+
+dock_selected_peps.R
 
 the rest are functions used in the scripts above
