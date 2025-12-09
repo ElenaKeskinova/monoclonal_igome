@@ -196,15 +196,21 @@ twodim_scale = lapply(dist_mx,\(dmat){
 
 g_coords = lapply(1:4,\(i){
   gf = g_full[[i]]
-  coords1 = twodim_scale[[i]]
+  coords1 = twodim_scale[[i]][V(gf)$name[which(V(gf)$AA!="-")],]
   vx = V(gf)$name[which(V(gf)$AA=="-")]
-  coords2 = sapply(vx,\(x){
-    nb = neighbors(gf,x)$name
-    nbc = coords1[nb,]
-    xc = c(mean(nbc[,1]),mean(nbc[,2]))
-    xc
-  } )
-  rbind(coords1,t(coords2))
+  if(length(vx)>0){
+    coords2 = sapply(vx,\(x){
+      nb = neighbors(gf,x)$name
+      nbc = coords1[nb,]
+      xc = c(mean(nbc[,1]),mean(nbc[,2]))
+      xc
+    } )
+    
+    rbind(coords1,t(coords2))
+  } else{
+    coords1
+  }
+  
 })
 
 scales = lapply(cont_mats_best,\(model){
@@ -267,22 +273,22 @@ for(i in 1:1){
 }
 
 # no sizes
-for(i in 1:1){
+for(i in 1:4){
   gf = g_full[[i]]
-  scl = scales[[i]][[1]][,1] # overall common contacts
-  epicnt = sapply(epi_contacts[[i]]$AB_contacts,length) # contacts per aa of epitope
-  names(epicnt) = epi_contacts[[i]]$AG_contact
+  #scl = scales[[i]][[1]][,1] # overall common contacts
+  #epicnt = sapply(epi_contacts[[i]]$AB_contacts,length) # contacts per aa of epitope
+  #names(epicnt) = epi_contacts[[i]]$AG_contact
   # number of contacts of each aa from epitope, for normalisation of common contacts
-  epicnt = epicnt[names(scl)]
+  #epicnt = epicnt[names(scl)]
   #pslog = pseudo_log_trans(sigma = 4)
   #coord = pslog$transform(g_coords[[i]][V(gf)$name,])
   coord = (g_coords[[i]][V(gf)$name,])
-  sizes = rep(0.5, vcount(gf))
+  # sizes = rep(0.5, vcount(gf))
+  # 
+  # names(sizes) = V(gf)$name
+  # #sizes[names(scl)] =(scl + 1)/epicnt
   
-  names(sizes) = V(gf)$name
-  sizes[names(scl)] =(scl + 1)/epicnt
-  
-  plot(gf, main = "", vertex.label =V(gf)$AA,layout = coord,vertex.frame.color = NA, vertex.label.cex = 2, main.size = 2)
+  plot(gf, main = "", vertex.label =V(gf)$AA,layout = coord,vertex.frame.color = NA, vertex.label.cex = 2, main.size = 2, main = abs[[i]])
   #text((max(coord[,1])-10),(max(coord[,2])-10), paste("Mimotope:",peps_best[i],"\nBest path:",bestpaths[i]), cex = 3 )
   #text(1,1, paste("Mimotope:",peps_best[i],"\nBest path:",bestpaths[i]), cex = 3 )
   
